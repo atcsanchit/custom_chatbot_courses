@@ -1,6 +1,8 @@
 import sys
 import os
 import pandas as pd
+from datasets import Dataset, DatasetDict
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 from dataclasses import dataclass
 
 from src.logger import logging
@@ -11,6 +13,7 @@ from src.exception import CustomException
 class DataTranformationConfig:
     data_path = os.path.join("artifacts", "data_ingestion", "wechatbot.csv")
     transformation_path = os.path.join("artifacts","data_transformation")
+    tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-base")
 
 class DataTransformation:
     def __init__(self):
@@ -55,11 +58,55 @@ class DataTransformation:
         except Exception as e:
             logging.info("Error in direct_question")
             raise CustomException(e,sys)
+
+    def preprocessing(self, examples):
+        try:
+            model_inputs = self.data_transformation.tokenizer(
+                examples['input_text'], 
+                max_length=512, 
+                truncation=True, 
+                padding='max_length'  
+            )
+            with self.data_transformation.tokenizer.as_target_tokenizer():
+                labels = self.data_transformation.tokenizer(
+                    examples['target_text'], 
+                    max_length=512, 
+                    truncation=True, 
+                    padding='max_length'  
+                )
+        
+            model_inputs['labels'] = labels['input_ids']
+            return model_inputs
+
+        except Exception as e:
+            logging.info("Error in preprocessing")
+            raise CustomException(e,sys)
+
+    def convert_to_features(self):
+        try:
+            train_data = self.transformed_df[['input', 'output']].to_dict(orient='records')
+            dataset = Dataset.from_dict({'input_text': [item['input'] for item in train_data],
+                                'target_text': [item['output'] for item in train_data]})
+            
+            train_test = dataset.train_test_split(test_size=0.1)  # 10% for evaluation
+            train_dataset = train_test['train']
+            eval_dataset = train_test['test']
+
+            tokenized_dataset_train = train_dataset.map(self.preprocessing, batched=True)
+            tokenized_dataset_eval = eval_dataset.map(self.preprocessing, batched=True)
+
+            tokenized_dataset_train.save_to_disk(os.path.join(self.data_transformation.transformation_path, "train"))
+            tokenized_dataset_eval.save_to_disk(os.path.join(self.data_transformation.transformation_path, "evaluate"))
+
+        except Exception as e:
+            logging.info("Error in convert_to_features")
+            raise CustomException(e,sys)
     
     def initiate_data_transformation(self):
         try:
             self.load_dataframe()
             self.direct_question()
+            self.convert_to_features()
         
         except Exception as e:
             logging.info("Error in initiate_data_transformation")

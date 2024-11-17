@@ -166,3 +166,4 @@ artifacts/
 Custom_Chatbot.egg-info/
 qa_dataset.csv
 logs/
+POC_notebooks/

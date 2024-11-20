@@ -18,7 +18,7 @@ def get_requirements(file_path:str)->List[str]:
 
 setup(
     name='Custom-Chatbot',
-    version='0.0.3',
+    version='0.0.4',
     author='Sanchit',
     author_email='atcsanchit@gmail.com',
     packages=find_packages(),

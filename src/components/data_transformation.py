@@ -18,11 +18,13 @@ class DataTranformationConfig:
 class DataTransformation:
     def __init__(self):
         self.data_transformation = DataTranformationConfig()
+        self.list_of_topics = ["description", "session price", "lessons", "duration", "price"]
     
     def load_dataframe(self):
         try:
             self.df = pd.read_csv(self.data_transformation.data_path)
-            self.transformed_df = pd.DataFrame(columns=["input","output"])            
+            self.transformed_df = pd.DataFrame(columns=["input","output"])       
+            self.rag_transformed_df = pd.DataFrame(columns=["input"])
 
         except Exception as e:
             logging.info("Error in load_dataframe")
@@ -43,20 +45,36 @@ class DataTransformation:
         try:
             for index, row in self.df.iterrows():
                 input_output_dict = {}
-                list_of_topics = ["description", "session price", "lessons", "duration", "price"]
+                # list_of_topics = ["description", "session price", "lessons", "duration", "price"]
                 
-                for topic_index, topic in enumerate(list_of_topics):
+                for topic_index, topic in enumerate(self.list_of_topics):
                     question = "what is the {flag1} of the course {flag2}".format(flag1 = topic, flag2 = row[0])        
                     answer = "the {flag1} is: {flag2}".format(flag1 = topic, flag2 = row[topic_index + 1])
                     input_output_dict["input"] = question
                     input_output_dict["output"] = answer
-                    new_row = pd.DataFrame([input_output_dict])  # Create DataFrame from dict
+                    new_row = pd.DataFrame([input_output_dict])  
                     self.transformed_df = pd.concat([self.transformed_df, new_row], ignore_index=True)
                     
             self.save_csv(dataframe=self.transformed_df, location=self.data_transformation.transformation_path, filename="transformed")
         
         except Exception as e:
             logging.info("Error in direct_question")
+            raise CustomException(e,sys)
+    
+    def rag_preprocessing(self):
+        try:
+            for index, row in self.df.iterrows():
+                input_output_dict = {}
+                for topic_index, topic in enumerate(self.list_of_topics):
+                    input = "{name} - {topic} - {flag}".format(name = row[0], topic = topic, flag = row[topic_index + 1])
+                    input_output_dict["input"] = input
+                    new_row = pd.DataFrame([input_output_dict])  
+                    self.rag_transformed_df = pd.concat([self.rag_transformed_df, new_row], ignore_index=True)
+            
+            self.save_csv(dataframe=self.rag_transformed_df, location=self.data_transformation.transformation_path, filename="rag_input")
+
+        except Exception as e:
+            logging.info("Error in rag_preprocessing")
             raise CustomException(e,sys)
 
     def preprocessing(self, examples):
@@ -106,6 +124,7 @@ class DataTransformation:
         try:
             self.load_dataframe()
             self.direct_question()
+            self.rag_preprocessing()
             self.convert_to_features()
         
         except Exception as e:

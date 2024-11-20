@@ -87,7 +87,7 @@ class Prediction:
 
             # self.load_split_data()
             context = self.store_in_VD(query = text)
-            self.prediction.message.format(question = text, context = context)
+            self.prediction.message = self.prediction.message.format(question = text, context = context)
             print("*"*500)
             print(self.prediction.message)
             output = pipe(self.prediction.message, **gen_kwargs)[0]["generated_text"]

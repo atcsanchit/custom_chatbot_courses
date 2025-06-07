@@ -73,7 +73,7 @@ PORT=your_port_number_here
 
 ## 🏗️ Project Structure
 
-
+```
 custom_chatbot_courses/
 ├── notebook/            # Jupyter notebooks for experimentation
 ├── src/                 # Source code for core functionalities
